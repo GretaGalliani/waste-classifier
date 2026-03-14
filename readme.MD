@@ -25,8 +25,10 @@ waste-classifier/
 │       ├── val/
 │       └── test/
 ├── outputs/
+│   ├── checkpoints/      # Saved model checkpoints (.pt)
 │   └── eda/              # Exploratory data analysis plots
 ├── phase1_dataset.py     # Phase 1: Dataset and preprocessing
+├── phase2_model.py       # Phase 2: Model definition (transfer learning)
 ├── pyproject.toml
 ├── poetry.lock
 └── README.md
@@ -117,10 +119,55 @@ for images, labels in loaders["train"]:
     ...  # images: (B, 3, 224, 224), labels: (B,)
 ```
 
+## Phase 2 — Model (Transfer Learning)
+
+`phase2_model.py` defines the `WasteClassifier` — a pretrained CNN backbone with a custom classification head.
+
+### Supported backbones
+
+| Backbone | Parameters | Notes |
+|---|---|---|
+| `resnet50` | 23.5M | Strong baseline, good accuracy |
+| `efficientnet_b0` | 4.0M | Lightweight, good accuracy/size trade-off |
+| `mobilenet_v3_small` | 2.5M | Fastest, smallest footprint |
+
+### Training modes
+
+| Mode | Behaviour |
+|---|---|
+| `feature_extraction` | Backbone frozen — only the classifier head is trained |
+| `fine_tune` | All layers trainable — lower learning rate recommended for backbone |
+
+### Inspect a model configuration
+
+```bash
+# Default: resnet50, feature_extraction
+poetry run python phase2_model.py --summary
+
+# EfficientNet-B0, full fine-tuning
+poetry run python phase2_model.py --summary --backbone efficientnet_b0 --mode fine_tune
+```
+
+### Use in code
+
+```python
+from phase2_model import WasteClassifier, save_checkpoint, load_checkpoint
+
+# Build and configure
+model = WasteClassifier(backbone_name="resnet50")
+model.freeze_backbone()           # feature extraction
+# model.unfreeze_backbone()       # full fine-tuning
+# model.unfreeze_last_n_layers(2) # partial fine-tuning
+
+# Save / load
+save_checkpoint(model, path="outputs/checkpoints/best.pt", epoch=10, val_acc=0.94)
+model, ckpt = load_checkpoint("outputs/checkpoints/best.pt")
+```
+
 ## Project Phases
 
 - [x] **Phase 1** — Dataset and preprocessing
-- [ ] **Phase 2** — Model (transfer learning)
+- [x] **Phase 2** — Model (transfer learning)
 - [ ] **Phase 3** — Training and optimization
 - [ ] **Phase 4** — Evaluation and error analysis
 - [ ] **Phase 5** — Interactive web app
